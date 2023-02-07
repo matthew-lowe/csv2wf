@@ -34,7 +34,7 @@ impl WaveformError {
 
 impl Display for WaveformError {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        write!(f, "CsvReadError: {}", self.details)
+        write!(f, "WaveformError: {}", self.details)
     }
 }
 
@@ -57,7 +57,9 @@ mod errors {
 #[derive(Debug)]
 pub struct Waveform {
     // Each point should be from 0 to 1
-    series: Vec<f64>,
+    pub series: Vec<f64>,
+    max: f64,
+    min: f64,
     pub source: String,
     pub x_units: String,
     pub y_units: String,
@@ -77,6 +79,8 @@ impl Waveform {
     pub fn new() -> Self {
         Waveform {
             series: vec![],
+            max: f64::MIN,
+            min: f64::MAX,
             source: String::new(),
             x_units: String::new(),
             y_units: String::new(),
@@ -101,12 +105,34 @@ impl Waveform {
 
 
         self.load_settings(&mut rdr)?;
+        self.load_series(&mut rdr)?;
 
         Ok(())
     }
 
-    /// Load the waveform data
+    /// Load the waveform data (assumes uniform sample distribution)
     fn load_series(&mut self, rdr: &mut CsvRdr) -> UnitResult {
+        let mut iter = rdr.records();
+        iter.reader_mut().seek(csv::Position::new())?;
+
+        let mut i = 0;
+        for result in iter {
+            let record = result?;
+            let cell = record.get(4).ok_or(WaveformError::new(errors::INVALID_CSV))?;
+            if cell != "" {
+                let value: f64 = cell.parse()?;
+                self.series.insert(i, value);
+
+                if value > self.max {
+                    self.max = value;
+                }
+
+                if value < self.min {
+                    self.min = value;
+                }
+            }
+            i += 1;
+        }
 
         Ok(())
     }
@@ -126,29 +152,25 @@ impl Waveform {
         self.x_units = load_setting!("Horizontal Units")?;
         self.y_units = load_setting!("Vertical Units")?;
         let l: String = load_setting!("Record Length")?;
-        println!("LENGTH: {}", l);
+        self.length = l.parse()?;
+
+        self.series = Vec::with_capacity(self.length as usize);
 
         Ok(())
     }
 
     /// Find a setting by name and do the type conversion, returns WaveformError if either of
-    /// these fail. The name must match exact, case sensitive (depth default 13 across, 17 down)
+    /// these fail.
     pub fn find_setting(&mut self, rdr: &mut CsvRdr, name: &str) -> Result<String, Box<dyn Error>> {
         // TODO: fix this mess :(
         let mut iter = rdr.records();
         // god gave us no choice
         iter.reader_mut().seek(csv::Position::new())?;
 
-        let mut j = 0;
         for result in iter {
             if let Ok(record) = result {
                 for i in 0..record.len() {
-                    j += 1;
                     if let Some(cell) = record.get(i as usize) {
-                        if j < 10 {
-                            println!("Searching: {}", cell.red());
-                            println!("Name = {}", name.blue());
-                        }
                         if cell == name {
                             let data = record.get(i + 1 as usize).unwrap().clone();
                             return Ok(String::from(data));

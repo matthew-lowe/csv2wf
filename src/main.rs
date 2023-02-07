@@ -15,6 +15,7 @@ struct Cli {
 fn main() {
     let args: Cli = Cli::parse();
     let mut wf = waveform::Waveform::new();
-    println!("we tryin to read: {:?}", wf.read(&args.path));
+    wf.read(&args.path);
+    println!("{:?}", wf.series);
 
 }
