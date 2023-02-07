@@ -1,4 +1,5 @@
 use clap::Parser;
+use colored::*;
 
 mod waveform;
 
@@ -14,7 +15,6 @@ struct Cli {
 fn main() {
     let args: Cli = Cli::parse();
     let mut wf = waveform::Waveform::new();
-    wf.read(&args.path).unwrap();
+    println!("we tryin to read: {:?}", wf.read(&args.path));
 
-    println!("CHANNEL: {}", args.channel);
 }

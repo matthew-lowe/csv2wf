@@ -9,3 +9,4 @@ authors = ["Matthew Lowe"]
 [dependencies]
 csv = "1.1.6"
 clap = { version = "4.1.4", features = ["derive"] }
+colored = "2.0.0"
