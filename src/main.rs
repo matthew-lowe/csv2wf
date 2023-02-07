@@ -16,6 +16,7 @@ fn main() {
     let args: Cli = Cli::parse();
     let mut wf = waveform::Waveform::new();
     wf.read(&args.path);
-    println!("{:?}", wf.series);
+
+    println!("{:?}", wf.render());
 
 }
