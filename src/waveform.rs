@@ -3,9 +3,11 @@ use std::fmt::{Display, Formatter};
 use std::fs::{File, OpenOptions};
 use std::io::BufReader;
 use std::path::PathBuf;
+use std::rc::Rc;
 use colored::*;
 use plotters::prelude::*;
 use plotters::style::Color;
+use crate::Cli;
 
 type UnitResult = Result<(), Box<dyn Error>>;
 
@@ -56,8 +58,11 @@ mod errors {
 }
 
 
-#[derive(Debug)]
+/// Waveform object, also stored the config whether you like it or not
 pub struct Waveform {
+    // User Config
+    args: Rc<Cli>,
+    // CSV Config
     // Each point should be from 0 to 1
     pub series_x: Vec<f64>,
     pub series_y: Vec<f64>,
@@ -84,8 +89,11 @@ macro_rules! wfm_err {
 }
 
 impl Waveform {
-    pub fn new() -> Self {
+    pub fn new(args: Rc<Cli>) -> Self {
         Waveform {
+            // User Config
+            args,
+            // CSV Config
             series_x: vec![],
             series_y: vec![],
             max_x: f64::MIN,
@@ -215,7 +223,7 @@ impl Waveform {
     }
 
     pub fn render(&self) -> Result<(), Box<dyn Error>> {
-        let root = BitMapBackend::new("/home/matthewl/Documents/code/rust/csv2wf/test.png", (1920, 1080)).into_drawing_area();
+        let root = BitMapBackend::new("out.png", (600, 400)).into_drawing_area();
         root.fill(&WHITE)?;
 
         let mut chart = ChartBuilder::on(&root)
@@ -226,7 +234,10 @@ impl Waveform {
             .build_cartesian_2d(self.min_x/self.scale_x..self.max_x/self.scale_x,
                                 self.min_y/self.scale_y..self.max_y/self.scale_y)?;
 
-        chart.configure_mesh().draw()?;
+        chart.configure_mesh()
+            .x_desc(format!("{} ({})", self.args.x_label, self.x_units))
+            .y_desc(format!("{} ({})", self.args.y_label, self.y_units))
+            .draw()?;
 
         chart
             .draw_series(LineSeries::new(
